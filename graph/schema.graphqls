@@ -1,0 +1,112 @@
+scalar Time
+
+type CurrentUser {
+  id: ID!
+  email: String!
+  name: String!
+  role: String!
+}
+
+type Dashboard {
+  monitorCount: Int!
+  upCount: Int!
+  downCount: Int!
+  openIncidentCount: Int!
+  avgLatencyMs: Float
+}
+
+type Monitor {
+  id: ID!
+  name: String!
+  url: String!
+  method: String!
+  expectedStatus: Int!
+  intervalSeconds: Int!
+  enabled: Boolean!
+  lastStatus: String!
+  lastLatencyMs: Int
+  lastCheckedAt: Time
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type CheckEvent {
+  id: ID!
+  monitorId: ID!
+  status: String!
+  latencyMs: Int
+  statusCode: Int
+  message: String
+  checkedAt: Time!
+}
+
+type Incident {
+  id: ID!
+  monitorId: ID
+  title: String!
+  status: String!
+  severity: String!
+  openedAt: Time!
+  resolvedAt: Time
+}
+
+type JobRun {
+  id: ID!
+  jobType: String!
+  status: String!
+  detail: String
+  createdAt: Time!
+  startedAt: Time
+  finishedAt: Time
+}
+
+type MaintenanceTask {
+  name: String!
+  description: String!
+  dangerous: Boolean!
+}
+
+type MaintenanceRun {
+  id: ID!
+  taskName: String!
+  status: String!
+  output: String
+  startedAt: Time!
+  finishedAt: Time
+}
+
+input MonitorInput {
+  name: String!
+  url: String!
+  method: String
+  expectedStatus: Int
+  intervalSeconds: Int
+  enabled: Boolean
+}
+
+input IncidentInput {
+  monitorId: ID
+  title: String!
+  severity: String
+}
+
+type Query {
+  viewer: CurrentUser
+  dashboard: Dashboard!
+  monitors: [Monitor!]!
+  checkEvents(monitorId: ID!): [CheckEvent!]!
+  incidents: [Incident!]!
+  jobRuns: [JobRun!]!
+  maintenanceTasks: [MaintenanceTask!]!
+  maintenanceRuns: [MaintenanceRun!]!
+}
+
+type Mutation {
+  createMonitor(input: MonitorInput!): Monitor!
+  deleteMonitor(id: ID!): Boolean!
+  enqueueCheck(monitorId: ID!): ID!
+  openIncident(input: IncidentInput!): Incident!
+  resolveIncident(id: ID!): Incident!
+  runMaintenanceTask(name: String!): MaintenanceRun!
+}
+

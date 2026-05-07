@@ -1,0 +1,20 @@
+root = "."
+tmp_dir = "tmp/air-web"
+
+[build]
+cmd = "go build -o ./tmp/air-web/go-fibe ./cmd/go-fibe"
+bin = "./tmp/air-web/go-fibe"
+args_bin = ["serve"]
+entrypoint = ["./tmp/air-web/go-fibe", "serve"]
+full_bin = "./tmp/air-web/go-fibe serve"
+delay = 100
+include_dir = ["cmd", "graph", "internal", "migrations"]
+include_file = ["go.mod", "go.sum", "gqlgen.yml"]
+exclude_dir = ["frontend", "tmp", ".git", "graph/generated", "graph/model"]
+include_ext = ["go", "graphqls", "sql", "toml"]
+kill_delay = "50ms"
+send_interrupt = true
+stop_on_error = true
+
+[log]
+time = false

@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1.7
+
+FROM golang:1.26.2-bookworm AS air-builder
+
+ARG AIR_VERSION=v1.63.0
+
+RUN go install github.com/air-verse/air@${AIR_VERSION}
+
+FROM debian:bookworm-slim
+
+ARG GO_VERSION=1.26.2
+ARG NODE_VERSION=24.11.1
+
+ENV CGO_ENABLED=0 \
+    GOFLAGS="-mod=mod" \
+    GOROOT=/usr/local/go \
+    GOPATH=/go \
+    GOMODCACHE=/go/pkg/mod \
+    NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false \
+    PATH=/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl xz-utils git openssh-client make \
+    && arch="$(dpkg --print-architecture)" \
+    && case "$arch" in amd64) node_arch="x64"; go_arch="amd64" ;; arm64) node_arch="arm64"; go_arch="arm64" ;; *) echo "unsupported arch: $arch" >&2; exit 1 ;; esac \
+    && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz" -o /tmp/go.tar.gz \
+    && tar -xzf /tmp/go.tar.gz -C /usr/local \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && mkdir -p /go/pkg/mod /root/.cache/go-build \
+    && rm -rf /tmp/go.tar.gz /tmp/node.tar.xz /var/lib/apt/lists/* \
+    && go version \
+    && npm --version
+
+COPY --from=air-builder /go/bin/air /usr/local/bin/air
+
+WORKDIR /workspace
+
+COPY go.mod go.sum* ./
+RUN go mod download
+
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN npm --prefix frontend ci --prefer-offline --no-audit --no-fund \
+    && cp -a frontend/node_modules /opt/frontend-node_modules
+
+COPY . .
+RUN go build -o /usr/local/bin/go-fibe ./cmd/go-fibe
+
+CMD ["go-fibe", "serve"]

@@ -1,0 +1,20 @@
+root = "."
+tmp_dir = "tmp/air-worker"
+
+[build]
+cmd = "go build -o ./tmp/air-worker/go-fibe ./cmd/go-fibe"
+bin = "./tmp/air-worker/go-fibe"
+args_bin = ["worker"]
+entrypoint = ["./tmp/air-worker/go-fibe", "worker"]
+full_bin = "./tmp/air-worker/go-fibe worker"
+delay = 150
+include_dir = ["cmd", "graph", "internal", "migrations"]
+include_file = ["go.mod", "go.sum", "gqlgen.yml"]
+exclude_dir = ["frontend", "tmp", ".git", "graph/generated", "graph/model"]
+include_ext = ["go", "graphqls", "sql", "toml"]
+kill_delay = "50ms"
+send_interrupt = true
+stop_on_error = true
+
+[log]
+time = false

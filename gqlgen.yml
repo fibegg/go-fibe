@@ -1,0 +1,41 @@
+schema:
+  - graph/schema.graphqls
+exec:
+  filename: graph/generated/generated.go
+  package: generated
+model:
+  filename: graph/model/models_gen.go
+  package: model
+resolver:
+  layout: follow-schema
+  dir: graph
+  package: graph
+  filename_template: "{name}.resolvers.go"
+models:
+  Time:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+  CurrentUser:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.CurrentUser
+  Dashboard:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.Dashboard
+  Monitor:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.Monitor
+  CheckEvent:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.CheckEvent
+  Incident:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.Incident
+  JobRun:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.JobRun
+  MaintenanceTask:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.MaintenanceTask
+  MaintenanceRun:
+    model:
+      - github.com/fibegg/go-fibe/internal/models.MaintenanceRun

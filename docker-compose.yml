@@ -1,0 +1,184 @@
+services:
+  postgres:
+    image: postgres:18.3-alpine
+    mem_limit: 160m
+    cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: 1m
+        max-file: "2"
+    security_opt:
+      - no-new-privileges:true
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    configs:
+      - source: postgres_config
+        target: /etc/postgresql/postgresql.conf
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: uptime_console
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d uptime_console"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.4-alpine
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru --save "" --appendonly no --tcp-keepalive 60 --hz 1
+    mem_limit: 96m
+    cpus: "0.10"
+    logging:
+      driver: json-file
+      options:
+        max-size: 1m
+        max-file: "2"
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  setup:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    mem_limit: ${SETUP_MEM_LIMIT:-512m}
+    cpus: ${SETUP_CPUS:-0.50}
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: go-fibe setup
+    environment:
+      APP_ENV: development
+      APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/uptime_console
+      REDIS_URL: redis://redis:6379/0
+      DB_MAX_CONNECTIONS: "2"
+      DB_MIN_CONNECTIONS: "0"
+      PUBLIC_DEMO_PASSWORD: ${PUBLIC_DEMO_PASSWORD:-password}
+    volumes:
+      - .:/workspace:cached
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    mem_limit: ${WEB_MEM_LIMIT:-512m}
+    cpus: ${WEB_CPUS:-0.75}
+    init: true
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "mkdir -p tmp && air -c .air.web.toml"
+    environment:
+      APP_ENV: development
+      APP_PORT: ${APP_PORT:-3000}
+      APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
+      APP_ALLOWED_HOSTS: ${APP_ALLOWED_HOSTS:-*}
+      APP_PUBLIC_ORIGIN: ${APP_PUBLIC_ORIGIN:-}
+      APP_TRUST_PROXY_HEADERS: ${APP_TRUST_PROXY_HEADERS:-true}
+      APP_FORCE_HTTPS: ${APP_FORCE_HTTPS:-false}
+      APP_ASSUME_HTTPS: ${APP_ASSUME_HTTPS:-false}
+      APP_HSTS: ${APP_HSTS:-false}
+      APP_FRAME_ANCESTORS: ${APP_FRAME_ANCESTORS:-}
+      APP_X_FRAME_OPTIONS: ${APP_X_FRAME_OPTIONS:-}
+      APP_CSP_MODE: ${APP_CSP_MODE:-off}
+      APP_CSP_CONNECT_SRC: ${APP_CSP_CONNECT_SRC:-}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-*}
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-auto}
+      APP_COOKIE_SAMESITE: ${APP_COOKIE_SAMESITE:-lax}
+      APP_ALLOW_PRIVATE_MONITOR_URLS: ${APP_ALLOW_PRIVATE_MONITOR_URLS:-false}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/uptime_console
+      REDIS_URL: redis://redis:6379/0
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-5}
+      DB_MIN_CONNECTIONS: ${DB_MIN_CONNECTIONS:-0}
+      DB_ACQUIRE_TIMEOUT_MS: ${DB_ACQUIRE_TIMEOUT_MS:-1500}
+    volumes:
+      - .:/workspace:cached
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/up').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    mem_limit: ${WORKER_MEM_LIMIT:-512m}
+    cpus: ${WORKER_CPUS:-0.75}
+    init: true
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "mkdir -p tmp && air -c .air.worker.toml"
+    environment:
+      APP_ENV: development
+      APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
+      APP_ALLOW_PRIVATE_MONITOR_URLS: ${APP_ALLOW_PRIVATE_MONITOR_URLS:-false}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/uptime_console
+      REDIS_URL: redis://redis:6379/0
+      DB_MAX_CONNECTIONS: ${WORKER_DB_MAX_CONNECTIONS:-3}
+      DB_MIN_CONNECTIONS: ${DB_MIN_CONNECTIONS:-0}
+      DB_ACQUIRE_TIMEOUT_MS: ${DB_ACQUIRE_TIMEOUT_MS:-1500}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      MONITOR_CHECK_INTERVAL_SECONDS: ${MONITOR_CHECK_INTERVAL_SECONDS:-30}
+    volumes:
+      - .:/workspace:cached
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    mem_limit: ${FRONTEND_MEM_LIMIT:-256m}
+    cpus: ${FRONTEND_CPUS:-0.35}
+    init: true
+    depends_on:
+      web:
+        condition: service_started
+    command: sh -c "if [ ! -x frontend/node_modules/.bin/vite ]; then mkdir -p frontend/node_modules && cp -a /opt/frontend-node_modules/. frontend/node_modules/ 2>/dev/null || true; fi; if [ ! -x frontend/node_modules/.bin/vite ] || [ frontend/package-lock.json -nt frontend/node_modules/.package-lock.json ]; then npm --prefix frontend ci --prefer-offline --no-audit --no-fund; fi; npm --prefix frontend run dev"
+    environment:
+      VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://web:3000}
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-true}
+      VITE_USE_POLLING: ${VITE_USE_POLLING:-false}
+      NPM_CONFIG_AUDIT: "false"
+      NPM_CONFIG_FUND: "false"
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - .:/workspace:cached
+      - frontend_node_modules:/workspace/frontend/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  frontend_node_modules:
+
+configs:
+  postgres_config:
+    file: ./config/postgres/postgresql.conf
