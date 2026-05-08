@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp/air-worker"
 
 [build]
-cmd = "go build -o ./tmp/air-worker/go-fibe ./cmd/go-fibe"
+cmd = "go build -buildvcs=false -o ./tmp/air-worker/go-fibe ./cmd/go-fibe"
 bin = "./tmp/air-worker/go-fibe"
 args_bin = ["worker"]
 entrypoint = ["./tmp/air-worker/go-fibe", "worker"]

@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 COPY . .
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath -ldflags="-s -w" -o /out/go-fibe ./cmd/go-fibe
+    go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/go-fibe ./cmd/go-fibe
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
@@ -26,4 +26,3 @@ USER nonroot:nonroot
 EXPOSE 3000
 ENTRYPOINT ["/usr/local/bin/go-fibe"]
 CMD ["serve"]
-

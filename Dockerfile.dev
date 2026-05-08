@@ -12,7 +12,7 @@ ARG GO_VERSION=1.26.2
 ARG NODE_VERSION=24.11.1
 
 ENV CGO_ENABLED=0 \
-    GOFLAGS="-mod=mod" \
+    GOFLAGS="-mod=mod -buildvcs=false" \
     GOROOT=/usr/local/go \
     GOPATH=/go \
     GOMODCACHE=/go/pkg/mod \
@@ -45,6 +45,6 @@ RUN npm --prefix frontend ci --prefer-offline --no-audit --no-fund \
     && cp -a frontend/node_modules /opt/frontend-node_modules
 
 COPY . .
-RUN go build -o /usr/local/bin/go-fibe ./cmd/go-fibe
+RUN go build -buildvcs=false -o /usr/local/bin/go-fibe ./cmd/go-fibe
 
 CMD ["go-fibe", "serve"]

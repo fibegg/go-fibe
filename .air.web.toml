@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp/air-web"
 
 [build]
-cmd = "go build -o ./tmp/air-web/go-fibe ./cmd/go-fibe"
+cmd = "go build -buildvcs=false -o ./tmp/air-web/go-fibe ./cmd/go-fibe"
 bin = "./tmp/air-web/go-fibe"
 args_bin = ["serve"]
 entrypoint = ["./tmp/air-web/go-fibe", "serve"]
