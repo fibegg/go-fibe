@@ -9,13 +9,8 @@
 /bin/
 /.cache/
 /node_modules/
-/frontend/node_modules/
-/frontend/dist/
-/frontend/tsconfig.tsbuildinfo
-/frontend/.vite/
 /vendor/
 *.test
 *.out
 *.prof
 *.log
-

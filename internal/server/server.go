@@ -5,12 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -57,7 +53,7 @@ func Serve(ctx context.Context, cfg config.Config) error {
 	if cfg.IsDevelopment() {
 		router.Handle("/graphiql", playground.Handler("GraphQL", "/graphql"))
 	}
-	router.NotFound(spaHandler())
+	router.NotFound(apiNotFound)
 
 	server := &http.Server{
 		Addr:              cfg.BindAddr(),
@@ -145,49 +141,8 @@ func events(rt *app.App) http.HandlerFunc {
 	}
 }
 
-func spaHandler() http.HandlerFunc {
-	dist := filepath.Join("frontend", "dist")
-	return func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
-			http.NotFound(w, r)
-			return
-		}
-		path, ok := safeSPAPath(dist, r.URL.Path)
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-		if stat, err := os.Stat(path); err != nil || stat.IsDir() {
-			path = filepath.Join(dist, "index.html")
-		}
-		if _, err := os.Stat(path); err != nil {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(`<!doctype html><title>Uptime Console</title><main style="font-family:system-ui;padding:2rem"><h1>Uptime Console API is running</h1><p>Start the Vite frontend or build frontend assets.</p></main>`))
-			return
-		}
-		http.ServeFile(w, r, path)
-	}
-}
-
-func safeSPAPath(root, requestPath string) (string, bool) {
-	cleaned := filepath.Clean("/" + requestPath)
-	relative := strings.TrimPrefix(cleaned, "/")
-	if relative == "." || relative == "" {
-		return filepath.Join(root, "index.html"), true
-	}
-	path := filepath.Join(root, relative)
-	rootAbs, err := filepath.Abs(root)
-	if err != nil {
-		return "", false
-	}
-	pathAbs, err := filepath.Abs(path)
-	if err != nil {
-		return "", false
-	}
-	if pathAbs != rootAbs && !strings.HasPrefix(pathAbs, rootAbs+string(filepath.Separator)) {
-		return "", false
-	}
-	return path, true
+func apiNotFound(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 }
 
 func corsMiddleware(cfg config.Config) func(http.Handler) http.Handler {
@@ -225,9 +180,4 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
-}
-
-func StaticFilesPresent() bool {
-	_, err := fs.Stat(os.DirFS("."), filepath.Join("frontend", "dist", "index.html"))
-	return err == nil
 }

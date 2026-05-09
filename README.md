@@ -1,6 +1,6 @@
 # Go Fibe Starter
 
-Production-like Go starter for live development environments. It ships an Uptime Console example with Chi, gqlgen, PostgreSQL, Redis, Asynq jobs, React, TypeScript, Vite HMR, RBAC, rate limits, maintenance tasks, and iframe/proxy security controls.
+Production-like Go backend starter for live development environments. It ships an Uptime Console API with Chi, gqlgen, PostgreSQL, Redis, Asynq jobs, RBAC, rate limits, maintenance tasks, and iframe/proxy security controls.
 
 ## Run
 
@@ -8,7 +8,12 @@ Production-like Go starter for live development environments. It ships an Uptime
 docker compose up --build
 ```
 
-Open the frontend at `http://localhost:5173` and sign in with:
+The local compose file expects the sibling frontend repositories and starts them as separate services:
+
+- App: `http://localhost:5173`
+- Admin: `http://localhost:5174`
+
+Sign in with:
 
 - Email: `admin@example.com`
 - Password: `password`

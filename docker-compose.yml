@@ -112,7 +112,7 @@ services:
     volumes:
       - .:/workspace:cached
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/up').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/up >/dev/null"]
       interval: 10s
       timeout: 3s
       retries: 12
@@ -148,17 +148,17 @@ services:
     volumes:
       - .:/workspace:cached
 
-  frontend:
+  app:
     build:
-      context: .
+      context: ${APP_CONTEXT:-../go-fibe-app}
       dockerfile: Dockerfile.dev
-    mem_limit: ${FRONTEND_MEM_LIMIT:-384m}
-    cpus: ${FRONTEND_CPUS:-0.35}
+    mem_limit: ${APP_MEM_LIMIT:-384m}
+    cpus: ${APP_CPUS:-0.35}
     init: true
     depends_on:
       web:
         condition: service_started
-    command: sh -c "if [ ! -x frontend/node_modules/.bin/vite ]; then mkdir -p frontend/node_modules && cp -a /opt/frontend-node_modules/. frontend/node_modules/ 2>/dev/null || true; fi; if [ ! -x frontend/node_modules/.bin/vite ] || [ frontend/package-lock.json -nt frontend/node_modules/.package-lock.json ]; then npm --prefix frontend ci --prefer-offline --no-audit --no-fund; fi; npm --prefix frontend run dev"
+    command: sh -c "if [ ! -x node_modules/.bin/vite ]; then mkdir -p node_modules && cp -a /opt/node_modules/. node_modules/ 2>/dev/null || true; fi; if [ ! -x node_modules/.bin/vite ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then npm ci --prefer-offline --no-audit --no-fund; fi; npm run dev"
     environment:
       VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://web:3000}
       VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-true}
@@ -166,10 +166,39 @@ services:
       NPM_CONFIG_AUDIT: "false"
       NPM_CONFIG_FUND: "false"
     ports:
-      - "${FRONTEND_PORT:-5173}:5173"
+      - "${APP_PORT:-5173}:5173"
     volumes:
-      - .:/workspace:cached
-      - frontend_node_modules:/workspace/frontend/node_modules
+      - ${APP_CONTEXT:-../go-fibe-app}:/workspace:cached
+      - app_node_modules:/workspace/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  admin:
+    build:
+      context: ${ADMIN_CONTEXT:-../go-fibe-admin}
+      dockerfile: Dockerfile.dev
+    mem_limit: ${ADMIN_MEM_LIMIT:-384m}
+    cpus: ${ADMIN_CPUS:-0.35}
+    init: true
+    depends_on:
+      web:
+        condition: service_started
+    command: sh -c "if [ ! -x node_modules/.bin/vite ]; then mkdir -p node_modules && cp -a /opt/node_modules/. node_modules/ 2>/dev/null || true; fi; if [ ! -x node_modules/.bin/vite ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then npm ci --prefer-offline --no-audit --no-fund; fi; npm run dev"
+    environment:
+      VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://web:3000}
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-true}
+      VITE_USE_POLLING: ${VITE_USE_POLLING:-false}
+      NPM_CONFIG_AUDIT: "false"
+      NPM_CONFIG_FUND: "false"
+    ports:
+      - "${ADMIN_PORT:-5174}:5173"
+    volumes:
+      - ${ADMIN_CONTEXT:-../go-fibe-admin}:/workspace:cached
+      - admin_node_modules:/workspace/node_modules
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 10s
@@ -179,7 +208,8 @@ services:
 
 volumes:
   postgres_data:
-  frontend_node_modules:
+  app_node_modules:
+  admin_node_modules:
 
 configs:
   postgres_config:
