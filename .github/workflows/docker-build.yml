@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         if: github.event_name == 'push'
@@ -31,7 +32,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.dev
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: false
           tags: ${{ env.IMAGE }}:dev-pr-${{ github.sha }}
           provenance: false
@@ -44,7 +45,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: false
           tags: ${{ env.IMAGE }}:prod-pr-${{ github.sha }}
           provenance: false
@@ -57,27 +58,27 @@ jobs:
         with:
           context: .
           file: Dockerfile.dev
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.IMAGE }}:dev-main
             ${{ env.IMAGE }}:dev-${{ github.sha }}
           provenance: false
           sbom: false
-          cache-from: type=registry,ref=${{ env.CACHE_IMAGE }}:dev-linux-amd64
-          cache-to: type=registry,ref=${{ env.CACHE_IMAGE }}:dev-linux-amd64,mode=max
+          cache-from: type=registry,ref=${{ env.CACHE_IMAGE }}:dev
+          cache-to: type=registry,ref=${{ env.CACHE_IMAGE }}:dev,mode=max
       - name: Build and push production image
         if: github.event_name == 'push'
         uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.IMAGE }}:prod-main
             ${{ env.IMAGE }}:prod-${{ github.sha }}
           provenance: false
           sbom: false
-          cache-from: type=registry,ref=${{ env.CACHE_IMAGE }}:prod-linux-amd64
-          cache-to: type=registry,ref=${{ env.CACHE_IMAGE }}:prod-linux-amd64,mode=max
+          cache-from: type=registry,ref=${{ env.CACHE_IMAGE }}:prod
+          cache-to: type=registry,ref=${{ env.CACHE_IMAGE }}:prod,mode=max
