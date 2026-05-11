@@ -51,6 +51,7 @@ type Config struct {
 	CSPConnectSrc            string
 	CookieSecure             CookieSecure
 	CookieSameSite           string
+	CookiePartitioned        bool
 	DemoPassword             string
 	AllowPrivateMonitorURLs  bool
 	WorkerConcurrency        int
@@ -89,6 +90,7 @@ func FromEnv() (Config, error) {
 		CSPConnectSrc:            strings.TrimSpace(os.Getenv("APP_CSP_CONNECT_SRC")),
 		CookieSecure:             CookieSecure(envOr("APP_COOKIE_SECURE", "auto")),
 		CookieSameSite:           envOr("APP_COOKIE_SAMESITE", "lax"),
+		CookiePartitioned:        boolEnv("APP_COOKIE_PARTITIONED", false),
 		DemoPassword:             envOr("PUBLIC_DEMO_PASSWORD", "password"),
 		AllowPrivateMonitorURLs:  boolEnv("APP_ALLOW_PRIVATE_MONITOR_URLS", false),
 		WorkerConcurrency:        intEnv("WORKER_CONCURRENCY", 2),

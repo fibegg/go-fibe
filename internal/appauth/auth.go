@@ -66,14 +66,7 @@ func Logout(rt *app.App) http.HandlerFunc {
 		if cookie, err := r.Cookie(sessionCookie); err == nil {
 			_ = rt.Redis.Del(r.Context(), sessionKey(rt.Config.Secret, cookie.Value)).Err()
 		}
-		http.SetCookie(w, &http.Cookie{
-			Name:     sessionCookie,
-			Value:    "",
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: true,
-			SameSite: sameSite(rt.Config.CookieSameSite),
-		})
+		http.SetCookie(w, sessionCookieHeader(rt, r, "", -1))
 		writeJSON(w, http.StatusOK, sessionResponse{})
 	}
 }
@@ -110,14 +103,23 @@ func currentUser(user models.User) models.CurrentUser {
 }
 
 func sessionCookieValue(rt *app.App, r *http.Request, token string) *http.Cookie {
+	return sessionCookieHeader(rt, r, token, sessionTTLSeconds)
+}
+
+func sessionCookieHeader(rt *app.App, r *http.Request, value string, maxAge int) *http.Cookie {
+	secure := rt.Config.CookieSecureEnabled(security.RequestIsHTTPS(r, rt.Config.TrustProxyHeaders))
+	if rt.Config.CookiePartitioned {
+		secure = true
+	}
 	return &http.Cookie{
-		Name:     sessionCookie,
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   rt.Config.CookieSecureEnabled(security.RequestIsHTTPS(r, rt.Config.TrustProxyHeaders)),
-		SameSite: sameSite(rt.Config.CookieSameSite),
-		MaxAge:   sessionTTLSeconds,
+		Name:        sessionCookie,
+		Value:       value,
+		Path:        "/",
+		HttpOnly:    true,
+		Secure:      secure,
+		SameSite:    sameSite(rt.Config.CookieSameSite),
+		MaxAge:      maxAge,
+		Partitioned: rt.Config.CookiePartitioned,
 	}
 }
 

@@ -59,6 +59,7 @@ services:
       redis:
         condition: service_healthy
     command: go-fibe setup
+    restart: "no"
     environment:
       APP_ENV: development
       APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
@@ -103,6 +104,7 @@ services:
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-*}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-auto}
       APP_COOKIE_SAMESITE: ${APP_COOKIE_SAMESITE:-lax}
+      APP_COOKIE_PARTITIONED: ${APP_COOKIE_PARTITIONED:-false}
       APP_ALLOW_PRIVATE_MONITOR_URLS: ${APP_ALLOW_PRIVATE_MONITOR_URLS:-false}
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/uptime_console
       REDIS_URL: redis://redis:6379/0

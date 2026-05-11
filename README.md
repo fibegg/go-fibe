@@ -41,6 +41,7 @@ The template is permissive by default for iframe-based deployments and easy to t
 - `APP_CORS_ALLOWED_ORIGINS=*`
 - `APP_COOKIE_SECURE=auto`
 - `APP_COOKIE_SAMESITE=lax`
+- `APP_COOKIE_PARTITIONED=false`
 - `APP_ALLOW_PRIVATE_MONITOR_URLS=false`
 
 Private, loopback, link-local, and credentialed monitor URLs are blocked unless `APP_ALLOW_PRIVATE_MONITOR_URLS=true`.
